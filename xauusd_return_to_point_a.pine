@@ -1,0 +1,60 @@
+//@version=6
+indicator("XAUUSD Return to Point A (Print Only)", overlay=true, max_labels_count=200)
+
+mode = input.string(defval="HIGH_DOWN_HIGH", title="Pattern", options=["HIGH_DOWN_HIGH", "LOW_UP_LOW"])
+leftBars = input.int(defval=5, title="Pivot Left Bars", minval=1)
+rightBars = input.int(defval=5, title="Pivot Right Bars", minval=1)
+minMovePct = input.float(defval=0.25, title="Minimum Move Away (%)", minval=0.01, step=0.01)
+returnToleranceTicks = input.int(defval=8, title="Return Tolerance (ticks)", minval=0)
+cooldownBars = input.int(defval=10, title="Cooldown Bars Between Prints", minval=0)
+showPointALine = input.bool(defval=true, title="Show Point A Line")
+
+float tickSize = syminfo.mintick
+float returnTolerance = returnToleranceTicks * tickSize
+
+var float pointA = na
+var bool movedAway = false
+var int lastPrintBar = na
+
+pivotHigh = ta.pivothigh(high, leftBars, rightBars)
+pivotLow = ta.pivotlow(low, leftBars, rightBars)
+
+newPointA = false
+if mode == "HIGH_DOWN_HIGH" and not na(pivotHigh)
+    pointA := pivotHigh
+    movedAway := false
+    newPointA := true
+
+if mode == "LOW_UP_LOW" and not na(pivotLow)
+    pointA := pivotLow
+    movedAway := false
+    newPointA := true
+
+hasPointA = not na(pointA)
+
+if hasPointA and not movedAway
+    if mode == "HIGH_DOWN_HIGH"
+        moveAwayPct = ((pointA - low) / pointA) * 100.0
+        movedAway := moveAwayPct >= minMovePct
+    else
+        moveAwayPct = ((high - pointA) / pointA) * 100.0
+        movedAway := moveAwayPct >= minMovePct
+
+returnHit = false
+if hasPointA and movedAway
+    if mode == "HIGH_DOWN_HIGH"
+        returnHit := high >= (pointA - returnTolerance)
+    else
+        returnHit := low <= (pointA + returnTolerance)
+
+canPrint = returnHit and (na(lastPrintBar) or (bar_index - lastPrintBar > cooldownBars))
+
+if barstate.isconfirmed and canPrint
+    lastPrintBar := bar_index
+    movedAway := false
+    label.new(bar_index, pointA, "Returned to A\n" + str.tostring(pointA, format.mintick), style=label.style_label_up, color=color.new(color.green, 0), textcolor=color.white, size=size.small)
+
+plot(showPointALine and hasPointA ? pointA : na, title="Point A", color=color.new(color.red, 0), linewidth=2, style=plot.style_linebr)
+plotshape(newPointA ? pointA : na, title="New Point A", style=shape.circle, location=location.absolute, size=size.tiny, color=color.new(color.orange, 0), text="A")
+
+plotshape(canPrint ? pointA : na, title="Returned to A", style=shape.labelup, location=location.absolute, color=color.new(color.green, 0), text="Back @ A", textcolor=color.white, size=size.tiny)
