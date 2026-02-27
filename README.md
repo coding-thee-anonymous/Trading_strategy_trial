@@ -37,9 +37,7 @@ Use this only if you want TradingView webhook payloads printed in your terminal.
 ### Setup
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+uv sync
 ```
 
 Run server:
